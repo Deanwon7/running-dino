@@ -8,7 +8,7 @@
         body {
             margin: 0;
             padding: 0;
-            background: linear-gradient(to bottom, #e0f2fe, #bae6fd); /* 시원한 하늘색 배경 */
+            background: linear-gradient(to bottom, #e0f2fe, #bae6fd);
             overflow: hidden;
             font-family: 'Arial', sans-serif;
             user-select: none;
@@ -21,9 +21,8 @@
             display: flex;
             justify-content: center;
             align-items: flex-end;
-            padding-bottom: 60px; /* 바닥 지면 높이 */
+            padding-bottom: 60px;
         }
-        /* 바닥 잔디밭 표현 */
         #ground {
             position: absolute;
             bottom: 0;
@@ -50,8 +49,8 @@
         .emoji {
             position: absolute;
             font-size: 55px;
-            bottom: 60px; /* 잔디밭 위에 안착 */
-            transition: bottom 0.18s ease-out; /* 점프가 조금 더 부드럽고 빨라짐 */
+            bottom: 60px;
+            transition: bottom 0.18s ease-out;
         }
         #dino {
             left: 60px;
@@ -76,7 +75,7 @@
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.85); /* 딥블루 블랙 배경 */
+            background: rgba(15, 23, 42, 0.85);
             color: white;
             flex-direction: column;
             justify-content: center;
@@ -136,31 +135,37 @@
         let level = 1;
         let isJumping = false;
         let gameActive = true;
-        let obstacleSpeed = 2.8; // 시작 속도를 살짝 올려 긴장감을 줬습니다.
+        let obstacleSpeed = 2.8;
+        let animationFrameId;
 
-        // 📱 터치 및 클릭 시 점프 로직
+        // 점프 로직
         function jump() {
             if (!gameActive || isJumping) return;
             isJumping = true;
             
-            // 점프 높이 (기본 바닥 60px + 160px 상승)
             dino.style.bottom = '220px'; 
             
-            // 정점에서 머무는 타이밍 조절
             setTimeout(() => {
-                dino.style.bottom = '60px'; // 바닥(잔디)으로 착지
+                dino.style.bottom = '60px'; 
                 setTimeout(() => {
                     isJumping = false;
                 }, 150);
             }, 400);
         }
 
-        // 모바일 터치 및 PC 마우스 클릭 모두 지원
+        // 모바일 터치와 PC 마우스 중복 실행 방지 처리
         window.addEventListener('touchstart', (e) => {
-            if(e.target.id !== 'restart-btn') jump();
-        });
+            if (e.target.id === 'restart-btn') return;
+            e.preventDefault(); // 기본 터치 행동 방지 (스크롤 등)
+            jump();
+        }, { passive: false });
+
         window.addEventListener('mousedown', (e) => {
-            if(e.target.id !== 'restart-btn') jump();
+            if (e.target.id === 'restart-btn') return;
+            // 모바일이 아닐 때만 마우스 클릭 허용
+            if (!('ontouchstart' in window)) {
+                jump();
+            }
         });
 
         // 실시간 충돌 및 점수 체크 시스템
@@ -170,7 +175,7 @@
             const dinoRect = dino.getBoundingClientRect();
             const obstacleRect = obstacle.getBoundingClientRect();
 
-            # 지훈이(공룡)와 선인장 장애물 충돌 판정 (판정 범위를 살짝 여유있게 조정)
+            // 충돌 판정 정확도 개선 (-15, -10 여유 적용)
             if (
                 dinoRect.right - 15 > obstacleRect.left &&
                 dinoRect.left + 15 < obstacleRect.right &&
@@ -179,16 +184,16 @@
             ) {
                 if (!isJumping) {
                     endGame();
+                    return;
                 }
             }
 
-            # 장애물이 화면 왼쪽으로 완전히 빠져나갔을 때
-            if (obstacleRect.right < 0) {
+            // 점수 획득 조건 판정
+            if (obstacleRect.right < 0 && obstacleRect.left !== 0) {
                 score++;
                 scoreDisplay.innerText = score;
                 respawnObstacle();
                 
-                # 5점마다 난이도 상승 (더 빠르게 지훈이를 압박!)
                 if (score % 5 === 0) {
                     level++;
                     levelDisplay.innerText = level;
@@ -199,7 +204,6 @@
                 }
             }
             
-            # 점수가 오를수록 뒤에서 쫓아오는 악어(티라노)가 점점 가까워짐
             const chaserPosition = -130 + (score * 6);
             if (chaserPosition < 15) {
                 chaser.style.left = `${chaserPosition}px`;
@@ -207,21 +211,23 @@
                 chaser.style.left = '15px';
             }
 
-            requestAnimationFrame(checkCollision);
+            animationFrameId = requestAnimationFrame(checkCollision);
         }
 
         function respawnObstacle() {
             obstacle.style.animation = 'none';
-            obstacle.offsetHeight; // 리플로우
+            obstacle.offsetHeight; // 리플로우 강제 트리거
             obstacle.style.animation = `moveObstacle ${obstacleSpeed}s linear forwards`;
         }
 
         function endGame() {
             gameActive = false;
-            dino.innerText = '💥'; // 부딪히면 펑!
-            chaser.style.left = '60px'; // 악어가 지훈이를 잡음
+            cancelAnimationFrame(animationFrameId);
+            dino.innerText = '💥'; 
+            chaser.style.left = '60px'; 
             finalScoreDisplay.innerText = score;
             gameOverScreen.style.display = 'flex';
+            obstacle.style.animationPlayState = 'paused'; // 장애물 정지
         }
 
         function resetGame() {
@@ -236,12 +242,17 @@
             scoreDisplay.innerText = score;
             levelDisplay.innerText = level;
             gameOverScreen.style.display = 'none';
+            obstacle.style.animationPlayState = 'running';
+            
+            cancelAnimationFrame(animationFrameId);
             respawnObstacle();
             checkCollision();
         }
 
-        // 게임 자동 시작
-        resetGame();
+        // 최초 실행
+        window.onload = () => {
+            resetGame();
+        };
     </script>
 </body>
 </html>
