@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>런닝 점프 지훈! 🦖</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #e0f2fe, #bae6fd); /* 시원한 하늘색 배경 */
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 60px; /* 바닥 지면 높이 */
+        }
+        /* 바닥 잔디밭 표현 */
+        #ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #4ade80;
+            border-top: 4px solid #22c55e;
+            z-index: 2;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            color: #1e3a8a;
+            font-size: 26px;
+            font-weight: bold;
+            z-index: 10;
+            text-shadow: 1px 1px 2px white;
+        }
+        .emoji {
+            position: absolute;
+            font-size: 55px;
+            bottom: 60px; /* 잔디밭 위에 안착 */
+            transition: bottom 0.18s ease-out; /* 점프가 조금 더 부드럽고 빨라짐 */
+        }
+        #dino {
+            left: 60px;
+            z-index: 5;
+        }
+        #chaser {
+            left: -120px;
+            font-size: 85px;
+            z-index: 4;
+            transition: left 0.4s ease-out;
+        }
+        #obstacle {
+            right: -100px;
+            z-index: 5;
+            animation: moveObstacle linear forwards;
+        }
+        @keyframes moveObstacle {
+            0% { right: -100px; }
+            100% { right: 115vw; }
+        }
+        #game-over-screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.85); /* 딥블루 블랙 배경 */
+            color: white;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        #game-over-screen h1 { 
+            font-size: 42px; 
+            color: #fde047; 
+            margin-bottom: 10px;
+            text-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #game-over-screen p { font-size: 26px; margin-bottom: 30px; }
+        #restart-btn {
+            padding: 16px 40px;
+            font-size: 22px;
+            background: linear-gradient(to right, #ef4444, #dc2626);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="ui">
+            <div>점수: <span id="score">0</span></div>
+            <div>레벨: <span id="level">1</span></div>
+        </div>
+        
+        <div id="dino" class="emoji">🦖</div>
+        <div id="chaser" class="emoji">🐊</div>
+        <div id="obstacle" class="emoji">🌵</div>
+        <div id="ground"></div>
+        
+        <div id="game-over-screen">
+            <h1>🦖 지훈이 잡혔다! 🏃‍♂️</h1>
+            <p>최종 점수: <span id="final-score">0</span>점</p>
+            <button id="restart-btn" onclick="resetGame()">다시 도전하기</button>
+        </div>
+    </div>
+
+    <script>
+        const dino = document.getElementById('dino');
+        const chaser = document.getElementById('chaser');
+        const obstacle = document.getElementById('obstacle');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+
+        let score = 0;
+        let level = 1;
+        let isJumping = false;
+        let gameActive = true;
+        let obstacleSpeed = 2.8; // 시작 속도를 살짝 올려 긴장감을 줬습니다.
+
+        // 📱 터치 및 클릭 시 점프 로직
+        function jump() {
+            if (!gameActive || isJumping) return;
+            isJumping = true;
+            
+            // 점프 높이 (기본 바닥 60px + 160px 상승)
+            dino.style.bottom = '220px'; 
+            
+            // 정점에서 머무는 타이밍 조절
+            setTimeout(() => {
+                dino.style.bottom = '60px'; // 바닥(잔디)으로 착지
+                setTimeout(() => {
+                    isJumping = false;
+                }, 150);
+            }, 400);
+        }
+
+        // 모바일 터치 및 PC 마우스 클릭 모두 지원
+        window.addEventListener('touchstart', (e) => {
+            if(e.target.id !== 'restart-btn') jump();
+        });
+        window.addEventListener('mousedown', (e) => {
+            if(e.target.id !== 'restart-btn') jump();
+        });
+
+        // 실시간 충돌 및 점수 체크 시스템
+        function checkCollision() {
+            if (!gameActive) return;
+
+            const dinoRect = dino.getBoundingClientRect();
+            const obstacleRect = obstacle.getBoundingClientRect();
+
+            # 지훈이(공룡)와 선인장 장애물 충돌 판정 (판정 범위를 살짝 여유있게 조정)
+            if (
+                dinoRect.right - 15 > obstacleRect.left &&
+                dinoRect.left + 15 < obstacleRect.right &&
+                dinoRect.bottom - 10 > obstacleRect.top &&
+                dinoRect.top < obstacleRect.bottom
+            ) {
+                if (!isJumping) {
+                    endGame();
+                }
+            }
+
+            # 장애물이 화면 왼쪽으로 완전히 빠져나갔을 때
+            if (obstacleRect.right < 0) {
+                score++;
+                scoreDisplay.innerText = score;
+                respawnObstacle();
+                
+                # 5점마다 난이도 상승 (더 빠르게 지훈이를 압박!)
+                if (score % 5 === 0) {
+                    level++;
+                    levelDisplay.innerText = level;
+                    if (obstacleSpeed > 1.2) {
+                        obstacleSpeed -= 0.25;
+                        obstacle.style.animationDuration = `${obstacleSpeed}s`;
+                    }
+                }
+            }
+            
+            # 점수가 오를수록 뒤에서 쫓아오는 악어(티라노)가 점점 가까워짐
+            const chaserPosition = -130 + (score * 6);
+            if (chaserPosition < 15) {
+                chaser.style.left = `${chaserPosition}px`;
+            } else {
+                chaser.style.left = '15px';
+            }
+
+            requestAnimationFrame(checkCollision);
+        }
+
+        function respawnObstacle() {
+            obstacle.style.animation = 'none';
+            obstacle.offsetHeight; // 리플로우
+            obstacle.style.animation = `moveObstacle ${obstacleSpeed}s linear forwards`;
+        }
+
+        function endGame() {
+            gameActive = false;
+            dino.innerText = '💥'; // 부딪히면 펑!
+            chaser.style.left = '60px'; // 악어가 지훈이를 잡음
+            finalScoreDisplay.innerText = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function resetGame() {
+            score = 0;
+            level = 1;
+            obstacleSpeed = 2.8;
+            gameActive = true;
+            isJumping = false;
+            dino.innerText = '🦖';
+            dino.style.bottom = '60px';
+            chaser.style.left = '-130px';
+            scoreDisplay.innerText = score;
+            levelDisplay.innerText = level;
+            gameOverScreen.style.display = 'none';
+            respawnObstacle();
+            checkCollision();
+        }
+
+        // 게임 자동 시작
+        resetGame();
+    </script>
+</body>
+</html>
