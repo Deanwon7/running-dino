@@ -13,6 +13,7 @@
             font-family: 'Arial', sans-serif;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: none; /* 🔥 모바일 브라우저의 기본 스크롤/확대 행동을 CSS 단에서 안전하게 차단합니다. */
         }
         #game-container {
             position: relative;
@@ -118,7 +119,7 @@
         <div id="game-over-screen">
             <h1>🦖 지훈이 잡혔다! 🏃‍♂️</h1>
             <p>최종 점수: <span id="final-score">0</span>점</p>
-            <button id="restart-btn" onclick="resetGame()">다시 도전하기</button>
+            <button id="restart-btn">다시 도전하기</button>
         </div>
     </div>
 
@@ -130,6 +131,7 @@
         const levelDisplay = document.getElementById('level');
         const gameOverScreen = document.getElementById('game-over-screen');
         const finalScoreDisplay = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
 
         let score = 0;
         let level = 1;
@@ -138,7 +140,7 @@
         let obstacleSpeed = 2.8;
         let animationFrameId;
 
-        // 점프 로직
+        // 점프 기능
         function jump() {
             if (!gameActive || isJumping) return;
             isJumping = true;
@@ -153,29 +155,29 @@
             }, 400);
         }
 
-        // 모바일 터치와 PC 마우스 중복 실행 방지 처리
-        window.addEventListener('touchstart', (e) => {
+        // 🔥 모바일 프리징 현상을 해결한 통합 입력 시스템
+        function handleInput(e) {
+            // 버튼 클릭/터치 시에는 점프를 유발하지 않음
             if (e.target.id === 'restart-btn') return;
-            e.preventDefault(); // 기본 터치 행동 방지 (스크롤 등)
             jump();
-        }, { passive: false });
+        }
 
-        window.addEventListener('mousedown', (e) => {
-            if (e.target.id === 'restart-btn') return;
-            // 모바일이 아닐 때만 마우스 클릭 허용
-            if (!('ontouchstart' in window)) {
-                jump();
-            }
+        // 화면 전체에 탭/클릭 이벤트 바인딩 (e.preventDefault를 삭제하여 프리징 완전 해결)
+        window.addEventListener('pointerdown', handleInput); 
+
+        // 다시 하기 버튼 이벤트 바인딩
+        restartBtn.addEventListener('pointerdown', (e) => {
+            e.stopPropagation(); // 이벤트가 화면 전체로 퍼지는 것을 방지
+            resetGame();
         });
 
-        // 실시간 충돌 및 점수 체크 시스템
+        // 실시간 충돌 및 점수 체크
         function checkCollision() {
             if (!gameActive) return;
 
             const dinoRect = dino.getBoundingClientRect();
             const obstacleRect = obstacle.getBoundingClientRect();
 
-            // 충돌 판정 정확도 개선 (-15, -10 여유 적용)
             if (
                 dinoRect.right - 15 > obstacleRect.left &&
                 dinoRect.left + 15 < obstacleRect.right &&
@@ -188,7 +190,6 @@
                 }
             }
 
-            // 점수 획득 조건 판정
             if (obstacleRect.right < 0 && obstacleRect.left !== 0) {
                 score++;
                 scoreDisplay.innerText = score;
@@ -216,7 +217,7 @@
 
         function respawnObstacle() {
             obstacle.style.animation = 'none';
-            obstacle.offsetHeight; // 리플로우 강제 트리거
+            obstacle.offsetHeight; 
             obstacle.style.animation = `moveObstacle ${obstacleSpeed}s linear forwards`;
         }
 
@@ -227,7 +228,7 @@
             chaser.style.left = '60px'; 
             finalScoreDisplay.innerText = score;
             gameOverScreen.style.display = 'flex';
-            obstacle.style.animationPlayState = 'paused'; // 장애물 정지
+            obstacle.style.animationPlayState = 'paused';
         }
 
         function resetGame() {
@@ -249,7 +250,6 @@
             checkCollision();
         }
 
-        // 최초 실행
         window.onload = () => {
             resetGame();
         };
