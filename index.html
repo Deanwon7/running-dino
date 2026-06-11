@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>런닝 점프 지훈! 🦖</title>
+    <title>공룡지훈 선인장 피하기 게임(ver1.3)</title>
     <style>
         body {
             margin: 0;
@@ -13,7 +13,7 @@
             font-family: 'Arial', sans-serif;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* 🔥 모바일 브라우저의 기본 스크롤/확대 행동을 CSS 단에서 안전하게 차단합니다. */
+            touch-action: none;
         }
         #game-container {
             position: relative;
@@ -24,6 +24,37 @@
             align-items: flex-end;
             padding-bottom: 60px;
         }
+        /* 🎯 상단 메인 타이틀 스타일 */
+        #main-title {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            font-weight: 800;
+            color: #1e40af;
+            background-color: rgba(255, 255, 255, 0.6);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 2px solid #93c5fd;
+            white-space: nowrap;
+            z-index: 10;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        /* 점수 및 레벨 UI 위치를 타이틀 아래로 살짝 내렸습니다 */
+        #ui {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            color: #1e3a8a;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 10;
+            text-shadow: 1px 1px 2px white;
+        }
         #ground {
             position: absolute;
             bottom: 0;
@@ -33,19 +64,6 @@
             background-color: #4ade80;
             border-top: 4px solid #22c55e;
             z-index: 2;
-        }
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            color: #1e3a8a;
-            font-size: 26px;
-            font-weight: bold;
-            z-index: 10;
-            text-shadow: 1px 1px 2px white;
         }
         .emoji {
             position: absolute;
@@ -106,6 +124,8 @@
 <body>
 
     <div id="game-container">
+        <div id="main-title">공룡지훈 선인장 피하기 게임(ver1.3)</div>
+
         <div id="ui">
             <div>점수: <span id="score">0</span></div>
             <div>레벨: <span id="level">1</span></div>
@@ -140,7 +160,6 @@
         let obstacleSpeed = 2.8;
         let animationFrameId;
 
-        // 점프 기능
         function jump() {
             if (!gameActive || isJumping) return;
             isJumping = true;
@@ -155,23 +174,18 @@
             }, 400);
         }
 
-        // 🔥 모바일 프리징 현상을 해결한 통합 입력 시스템
         function handleInput(e) {
-            // 버튼 클릭/터치 시에는 점프를 유발하지 않음
             if (e.target.id === 'restart-btn') return;
             jump();
         }
 
-        // 화면 전체에 탭/클릭 이벤트 바인딩 (e.preventDefault를 삭제하여 프리징 완전 해결)
         window.addEventListener('pointerdown', handleInput); 
 
-        // 다시 하기 버튼 이벤트 바인딩
         restartBtn.addEventListener('pointerdown', (e) => {
-            e.stopPropagation(); // 이벤트가 화면 전체로 퍼지는 것을 방지
+            e.stopPropagation(); 
             resetGame();
         });
 
-        // 실시간 충돌 및 점수 체크
         function checkCollision() {
             if (!gameActive) return;
 
